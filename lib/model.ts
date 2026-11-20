@@ -113,6 +113,7 @@ export interface BoardRow {
     age_days: number | null;
   };
   farm_steps: string[];
+  farm_summary: string;
 }
 
 /** The dashboard's view of one board row, with the model breakdown and the farm plan. */
@@ -133,6 +134,7 @@ export interface RadarRow {
   issuance_factor: number;
   watchlist: boolean;
   farm_steps: string[];
+  farm_summary: string;
 }
 
 /** A live-token protocol: it already trades, so the board shows the market's own value. */
@@ -388,6 +390,18 @@ export function farmPlan(p: SnapshotProtocol, asOf: string): string[] {
   return [open, ...middle.filter((s) => s.length > 0), points, close];
 }
 
+/**
+ * The farm plan at a glance: the budget, the holding period and the weekly effort, sized by the
+ * protocol's TVL tier and category, so a reader can price the whole plan before reading its steps.
+ */
+export function farmSummary(p: SnapshotProtocol): string {
+  const cat = p.category ?? '';
+  const gas = /Bridge|CDP|Lending/.test(cat) ? '$10-$40 of gas and fees' : /CEX/.test(cat) ? 'trading fees only, no gas' : /Staking|Restaking|Yield/.test(cat) ? '$5-$25 of gas' : '$5-$30 of gas and fees';
+  const hold = /CEX/.test(cat) ? 'an ongoing customer history, reviewed monthly' : /Yield|Allocator|Curator/.test(cat) ? 'a 60-90 day hold, checked monthly' : 'a 60-90 day position, checked weekly';
+  const size = p.tvl_usd >= 1_000_000_000 ? 'sized $1,000-$5,000' : p.tvl_usd >= 100_000_000 ? 'sized $250-$1,000' : 'sized $50-$250';
+  return `Plan at a glance: ${size}, ${gas}, ${hold}.`;
+}
+
 /** Parse and validate the sealed snapshot text. */
 export function parseSnapshot(text: string): Snapshot {
   let raw: unknown;
@@ -448,6 +462,7 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
       age_days: v.age,
     },
     farm_steps: farmPlan(p, snapshot.as_of),
+    farm_summary: farmSummary(p),
   }));
   const live: LiveRow[] = snapshot.protocols
     .filter((p) => !isPreToken(p) && p.mcap_usd !== null)
@@ -484,6 +499,7 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
       issuance_factor: r.model.issuance_factor,
       watchlist: watch.has(r.slug),
       farm_steps: r.farm_steps,
+      farm_summary: r.farm_summary,
     })),
     live,
   };

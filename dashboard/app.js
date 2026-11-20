@@ -180,7 +180,8 @@
       '<div class="why"><b>Why this rank:</b> ' + esc(r.name) + ' holds ' + fmtUsd(r.tvl_usd) + ' of TVL. Protocols like it that already trade are worth about ' +
       r.peer_multiple.toFixed(2) + '&times; their TVL; its ' + fmtPct(r.change_7d) + ' week and ' + fmtAge(r.age_days) + ' without a token move the estimate to ' + fmtUsd(r.implied_value_usd) +
       '. The number is the model&rsquo;s claim from the snapshot alone &mdash; it prices the launch, it does not promise one.</div>' +
-      '<h3 class="plan">Farm plan &mdash; before the launch</h3><ol class="steps">' + steps + '</ol>' +
+      '<h3 class="plan">Farm plan &mdash; before the launch</h3>' +
+      '<p style="color:var(--muted);margin:0 0 10px;font-size:14px"><b style="color:var(--amber)">' + esc(r.farm_summary || '') + '</b></p><ol class="steps">' + steps + '</ol>' +
       '</aside>';
   }
 

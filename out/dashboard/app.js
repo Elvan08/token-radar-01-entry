@@ -119,6 +119,16 @@
       '</nav>';
   }
 
+  function moversHtml() {
+    var movers = DATA.rows.filter(function (r) { return r.watchlist && r.change_7d !== null; })
+      .sort(function (a, b) { return b.change_7d - a.change_7d; }).slice(0, 5);
+    if (!movers.length) return '';
+    var chips = movers.map(function (r) {
+      return '<button class="chip" data-slug="' + esc(r.slug) + '">' + esc(r.name) + ' <b class="' + (r.change_7d >= 0 ? 'pos' : 'neg') + '">' + fmtPct(r.change_7d) + '</b></button>';
+    }).join('');
+    return '<section class="movers"><span class="movers-label">Watchlist movers &mdash; fastest 7d TVL growth</span><span class="chips">' + chips + '</span></section>';
+  }
+
   function boardHtml(rows) {
     var max = rows.length ? Math.max.apply(null, rows.map(function (r) { return r.implied_value_usd; })) : 1;
     var head = '<table><thead><tr>' +
@@ -188,7 +198,7 @@
   function render() {
     var rows = state.tab === 'board' ? filtered() : [];
     app.innerHTML = headerHtml() + controlsHtml() +
-      (state.tab === 'board' ? boardHtml(rows) : liveHtml()) +
+      (state.tab === 'board' ? moversHtml() + boardHtml(rows) : liveHtml()) +
       '<footer>Source: <b>' + esc(DATA.source) + '</b> &middot; sealed snapshot as of <b>' + esc(DATA.as_of) + '</b>. ' +
       'Implied values are this entry&rsquo;s model (' + esc(DATA.model_version) + '), computed only from the snapshot&rsquo;s figures; they are claims to argue with, not prices. ' +
       'Farm plans are starting points &mdash; check a protocol&rsquo;s own docs before moving money.</footer>' +
@@ -209,6 +219,9 @@
     document.getElementById('watch').addEventListener('change', function (e) { state.watch = e.target.checked; rerenderTable(); });
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
       b.addEventListener('click', function () { state.tab = b.getAttribute('data-tab'); render(); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.movers .chip'), function (chip) {
+      chip.addEventListener('click', function () { openDrawer(chip.getAttribute('data-slug')); });
     });
     Array.prototype.forEach.call(document.querySelectorAll('thead th[data-k]'), function (th) {
       th.addEventListener('click', function () {

@@ -159,6 +159,21 @@ ol.steps li::marker { color: var(--amber); font-family: var(--mono); font-weight
 }
 .why b { color: var(--ink); }
 
+.movers {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; margin: 14px 0 4px;
+}
+.movers-label { color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.movers .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: var(--panel); border: 1px solid var(--amber); border-radius: 999px;
+  color: var(--ink); font: inherit; font-size: 13px; padding: 5px 12px; cursor: pointer;
+}
+.chip:hover { background: var(--amber); color: #161006; }
+.chip:hover b { color: #161006; }
+.chip b { font-family: var(--mono); }
+
 footer { margin-top: 30px; color: var(--faint); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
 footer b { color: var(--muted); }
 

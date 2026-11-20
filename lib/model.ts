@@ -298,8 +298,13 @@ export function farmPlan(p: SnapshotProtocol, asOf: string): string[] {
   const ageText = age === null ? 'a track record DefiLlama already follows' : `${Math.floor(age / 30)}+ months tracked on DefiLlama`;
   const tier = p.tvl_usd >= 1_000_000_000 ? 'a top-tier position ($1,000-$5,000)' : p.tvl_usd >= 100_000_000 ? 'a mid position ($250-$1,000)' : 'a starter position ($50-$250)';
   const open = `Open the ${p.name} app on ${chain} and connect a fresh wallet you use only for farming; ${p.name} holds ${money(p.tvl_usd)} of TVL with ${ageText}, so early-user snapshots are the realistic route to any launch allocation. Cost: $0, 10 minutes.`;
-  const close = `Keep a dated log of every ${p.name} action (tx hashes, amounts, dates) in a spreadsheet; if a points program or snapshot is announced you can prove history in minutes instead of reconstructing it. Cost: $0, 5 minutes a week.`;
-  const points = `Check the ${p.name} app and its official X account weekly for a points or season program; protocols at this size usually open one 1-3 months before a token, and week-one entrants earn the launch multiplier. Cost: $0, 5 minutes a week.`;
+  const momentum =
+    p.change_7d !== null && p.change_7d >= 5
+      ? `TVL naik ${p.change_7d.toFixed(1)}% dalam 7 hari — the growth is already happening, so enter at the top of ${tier} this week instead of waiting for a launch announcement; fast-growing protocols snapshot their early users before the crowd arrives. Cost: gas only on top of the deposit, 15 minutes.`
+      : p.change_7d !== null && p.change_7d <= -10
+        ? `TVL turun ${Math.abs(p.change_7d).toFixed(1)}% dalam 7 hari — ukuran lebih kecil: size the first deposit at the bottom of ${tier} and split it into two tranches a month apart; a falling TVL can mean rotation out, so prove the position in stages instead of going all-in on a cooling protocol. Cost: gas only, 10 minutes per tranche.`
+        : `TVL ${p.name} ${p.change_7d === null ? 'has no 7-day change published' : `moved ${p.change_7d >= 0 ? '+' : ''}${p.change_7d.toFixed(1)}% in 7 days — no strong momentum either way`}, so stick to the standard ${tier} sizing and let the 60-90 day hold do the work; flat TVL means the snapshot, when it comes, will reward tenure over timing. Cost: $0, passive.`;
+  const review = `Check the ${p.name} app and its official X account weekly for a points or season program, and keep a dated log of every action (tx hashes, amounts, dates) in a spreadsheet; week-one entrants earn the launch multiplier, and a dated log lets you prove history in minutes if a snapshot is announced. Cost: $0, 5 minutes a week.`;
   const playbooks: Record<string, string[]> = {
     'Lending': [
       `Supply ${tier} of a blue-chip asset (ETH or a major stablecoin) on ${p.name} on ${chain}; lending supply is the balance most launch snapshots weight heaviest. Gas: about $1-$5 on ${chain}, 15 minutes to set up.`,
@@ -387,7 +392,7 @@ export function farmPlan(p: SnapshotProtocol, asOf: string): string[] {
     `Hold a continuous position or balance with ${p.name} for 60-90 days instead of dipping in once; duration is the cheapest signal to earn and the most common one launches pay for. Cost: capital in place, $0 extra.`,
     `Try one secondary feature of ${p.name} (a second market, chain or tool) so the wallet is in the engaged minority if the formula tiers users by breadth. Cost: gas only, 15 minutes.`,
   ];
-  return [open, ...middle.filter((s) => s.length > 0), points, close];
+  return [open, momentum, ...middle.filter((s) => s.length > 0), review];
 }
 
 /**

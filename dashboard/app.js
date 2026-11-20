@@ -71,17 +71,19 @@
       '<header class="masthead">' +
       '<p class="kicker">Token launch radar &middot; model ' + esc(DATA.model_version) + '</p>' +
       '<h1>Launch<span class="scope">Scope</span></h1>' +
-      '<p class="lede">Every protocol in the snapshot that still has <strong>no token</strong>, ranked by what its launch would be worth. ' +
+      '<p class="lede">Every standalone protocol in the snapshot that still has <strong>no token</strong>, ranked by what its launch would be worth. ' +
+      'Wrapped and staked products of assets that already trade are counted and set aside, never ranked &mdash; a wrapped bitcoin does not launch a second bitcoin. ' +
       'The price of each future token is read off the protocols whose tokens already trade &mdash; no names are picked by hand, and every number on this page can be audited down to its four factors.</p>' +
       '<div class="stats">' +
       '<div class="stat"><span class="n">' + total + '</span><span class="l">protocols scanned</span></div>' +
       '<div class="stat"><span class="n">' + DATA.board_size + '</span><span class="l">pre-token, ranked</span></div>' +
+      '<div class="stat"><span class="n">' + DATA.products_size + '</span><span class="l">wrapped products set aside</span></div>' +
       '<div class="stat"><span class="n">' + DATA.watchlist_size + ' / ' + DATA.watchlist_size + '</span><span class="l">watchlist covered</span></div>' +
       '<div class="stat"><span class="n">' + DATA.global_median_multiple.toFixed(3) + '&times;</span><span class="l">median mcap / TVL</span></div>' +
       '<div class="stat"><span class="n">' + esc(DATA.as_of) + '</span><span class="l">snapshot date</span></div>' +
       '</div></header>' +
       '<section class="model">' +
-      '<div class="factor"><h3>1 &middot; Peer multiple</h3><p>The median <b>mcap/TVL</b> of tokenized protocols in the same category, shrunk toward the snapshot median by sample size.</p></div>' +
+      '<div class="factor"><h3>1 &middot; Peer multiple</h3><p>The median <b>mcap/TVL</b> of tokenized protocols in the same category, shrunk toward the snapshot median by sample size and capped at the snapshot&rsquo;s 90th percentile, so one thin category cannot own the board.</p></div>' +
       '<div class="factor"><h3>2 &middot; Momentum</h3><p>Seven-day TVL growth on an exponential curve, <b>exp(change &times; 0.9)</b>: growth compounds, one bad week cannot zero a protocol.</p></div>' +
       '<div class="factor"><h3>3 &middot; Maturity</h3><p>Years tracked with no token, on a saturating curve up to <b>+15%</b>: a proven product is worth more than a newborn.</p></div>' +
       '<div class="factor"><h3>4 &middot; Issuance prior</h3><p>The share of the category that ever issued a token, counted from this snapshot: some categories launch, some never do.</p></div>' +

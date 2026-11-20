@@ -1,16 +1,24 @@
 // LaunchScope: a token launch radar built on one sealed DefiLlama snapshot.
 //
-// The board ranks EVERY protocol in the snapshot that still records no token (342 of 758), not just
-// the 40-name watchlist: the watchlist is the floor the gate checks, never the ceiling of the radar.
-// Protocols whose token already trades are kept apart in a live set and shown at the market's own
-// values; they are never mixed into the ranked board, but they are what the board is priced against.
+// The board ranks every standalone protocol in the snapshot that still records no token (256 of
+// 758), not just the 40-name watchlist: the watchlist is the floor the gate checks, never the
+// ceiling of the radar. Two sets are kept apart from the ranking, on the snapshot's own lines:
+// protocols whose token already trades (shown in a live set at the market's own values — they are
+// what the board is priced against), and the 86 wrapped or staked products of an asset that
+// already trades (categories Bridge, Canonical Bridge, Liquid Staking, Liquid Restaking and
+// Restaked BTC — the same line the snapshot's watchlist rule draws): a wrapped bitcoin does not
+// launch a second bitcoin, so it is counted and named, never ranked as a future launch.
 //
 // The implied value of a pre-token protocol is read off the snapshot's own figures, in four moves:
 //
 //   1. Peer multiple. Protocols in the same category whose token already trades reveal what the
 //      market pays per dollar of TVL in that category: the median mcap/TVL of the category's
 //      tokenized protocols, shrunk toward the snapshot-wide median (0.205) by sample size, so a
-//      category with two thin peers cannot shout down the whole market's evidence.
+//      category with two thin peers cannot shout down the whole market's evidence. The multiple
+//      is winsorised at the 90th percentile of every tokenized ratio in the snapshot: a category
+//      whose few trading peers hold almost no TVL (prediction markets) would otherwise price a
+//      $300M protocol above every exchange on the board, and a cap read from the same data keeps
+//      one thin category from owning the ranking.
 //   2. Momentum. Seven-day TVL growth compounds into the multiple on an exponential curve:
 //      exp(clamp(change_7d, -40, 60) / 100 x 0.9), so a protocol adding TVL fast is worth more
 //      than a shrinking one with the same stock of TVL, and one bad week cannot zero it.
@@ -147,6 +155,7 @@ export interface RadarData {
   model_version: string;
   global_median_multiple: number;
   total_protocols: number;
+  products_size: number;
   watchlist_size: number;
   board_size: number;
   early_size: number;
@@ -179,10 +188,23 @@ export function isPreToken(p: SnapshotProtocol): boolean {
   return p.gecko_id === null && p.symbol === null && p.mcap_usd === null;
 }
 
+/**
+ * Categories that are wrapped or staked products of an asset that already trades — the same list
+ * the snapshot's watchlist rule uses. Their value already trades through the parent asset, so the
+ * board counts and names them but never ranks them as future launches.
+ */
+export const PRODUCT_CATEGORIES = new Set(['Bridge', 'Canonical Bridge', 'Liquid Staking', 'Liquid Restaking', 'Restaked BTC']);
+
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+/** The q-quantile of a set of ratios, nearest-rank; used to winsorise the peer multiple. */
+function quantile(values: number[], q: number): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]!;
 }
 
 function clamp(value: number, lo: number, hi: number): number {
@@ -221,11 +243,13 @@ export function categoryEvidence(snapshot: Snapshot, model: ModelConstants): Map
     totals.set(cat, t);
   }
   const globalMedian = allRatios.length > 0 ? median(allRatios) : 0.2;
+  const multipleCap = allRatios.length > 0 ? quantile(allRatios, 0.9) : 3;
   const out = new Map<string, CategoryEvidence>();
   for (const [cat, t] of totals) {
     const ratios = ratiosByCat.get(cat) ?? [];
     const catMedian = ratios.length > 0 ? median(ratios) : globalMedian;
-    const peerMultiple = (ratios.length * catMedian + model.shrink_peers * globalMedian) / (ratios.length + model.shrink_peers);
+    const shrunk = (ratios.length * catMedian + model.shrink_peers * globalMedian) / (ratios.length + model.shrink_peers);
+    const peerMultiple = Math.min(shrunk, multipleCap);
     out.set(cat, {
       peerMultiple,
       peers: ratios.length,
@@ -388,8 +412,9 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
       .map((p) => p.mcap_usd! / p.tvl_usd),
   );
   const watch = new Set(snapshot.watchlist);
-  const scored = snapshot.protocols
-    .filter(isPreToken)
+  const preToken = snapshot.protocols.filter(isPreToken);
+  const scored = preToken
+    .filter((p) => !PRODUCT_CATEGORIES.has(p.category ?? ''))
     .map((p) => {
       const ev = evidence.get(p.category ?? 'Uncategorised')!;
       const v = impliedValue(p, snapshot.as_of, ev, MODEL);
@@ -437,6 +462,7 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
     model_version: MODEL_VERSION,
     global_median_multiple: Number(globalMedian.toFixed(4)),
     total_protocols: snapshot.protocols.length,
+    products_size: preToken.length - board.length,
     watchlist_size: snapshot.watchlist.length,
     board_size: board.length,
     early_size: board.length - snapshot.watchlist.length,

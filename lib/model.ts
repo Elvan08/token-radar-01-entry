@@ -84,7 +84,7 @@ export const MODEL: ModelConstants = {
 };
 
 /** The model's version label: the dashboard names it. */
-export const MODEL_VERSION = 'launchscope-3';
+export const MODEL_VERSION = 'launchscope-4';
 
 /** How many live-token protocols the Live view carries, by market cap. */
 export const LIVE_ROWS = 24;
@@ -312,9 +312,9 @@ export function farmPlan(p: SnapshotProtocol, asOf: string): string[] {
   const open = `Open the ${p.name} app on ${chain} and connect a fresh wallet you use only for farming; ${p.name} holds ${money(p.tvl_usd)} of TVL with ${ageText}, so early-user snapshots are the realistic route to any launch allocation. Cost: $0, 10 minutes.`;
   const momentum =
     p.change_7d !== null && p.change_7d >= 5
-      ? `TVL naik ${p.change_7d.toFixed(1)}% dalam 7 hari — the growth is already happening, so enter at the top of ${tier} this week instead of waiting for a launch announcement; fast-growing protocols snapshot their early users before the crowd arrives. Cost: gas only on top of the deposit, 15 minutes.`
+      ? `TVL rose ${p.change_7d.toFixed(1)}% in 7 days — the growth is already happening, so enter at the top of ${tier} this week instead of waiting for a launch announcement; fast-growing protocols snapshot their early users before the crowd arrives. Cost: gas only on top of the deposit, 15 minutes.`
       : p.change_7d !== null && p.change_7d <= -10
-        ? `TVL turun ${Math.abs(p.change_7d).toFixed(1)}% dalam 7 hari — ukuran lebih kecil: size the first deposit at the bottom of ${tier} and split it into two tranches a month apart; a falling TVL can mean rotation out, so prove the position in stages instead of going all-in on a cooling protocol. Cost: gas only, 10 minutes per tranche.`
+        ? `TVL fell ${Math.abs(p.change_7d).toFixed(1)}% in 7 days — size smaller: size the first deposit at the bottom of ${tier} and split it into two tranches a month apart; a falling TVL can mean rotation out, so prove the position in stages instead of going all-in on a cooling protocol. Cost: gas only, 10 minutes per tranche.`
         : `TVL ${p.name} ${p.change_7d === null ? 'has no 7-day change published' : `moved ${p.change_7d >= 0 ? '+' : ''}${p.change_7d.toFixed(1)}% in 7 days — no strong momentum either way`}, so stick to the standard ${tier} sizing and let the 60-90 day hold do the work; flat TVL means the snapshot, when it comes, will reward tenure over timing. Cost: $0, passive.`;
   const review = `Check the ${p.name} app and its official X account weekly for a points or season program, and keep a dated log of every action (tx hashes, amounts, dates) in a spreadsheet; week-one entrants earn the launch multiplier, and a dated log lets you prove history in minutes if a snapshot is announced. Cost: $0, 5 minutes a week.`;
   const playbooks: Record<string, string[]> = {
@@ -437,9 +437,17 @@ function ordinal(n: number): string {
 export function peerNote(p: SnapshotProtocol, ev: CategoryEvidence, tvlRank: number): string {
   const cat = p.category ?? 'Uncategorised';
   const share = `${ev.tokenized} of ${ev.members} already trade`;
+  // The drawer shows the multiple the model actually applies (peerMultiple: shrunk
+  // toward the snapshot median by sample size, capped at the 90th percentile), so the
+  // note quotes it too: a raw median alone would contradict the drawer's own math.
+  // When shrinkage moved the number, the note says so in one clause instead of hiding it.
+  const shrunk =
+    ev.peers > 0 && Math.abs(ev.peerMultiple - ev.medianMultiple) / ev.medianMultiple > 0.05
+      ? `, shrunk to ${ev.peerMultiple.toFixed(2)}× on ${ev.peers} peer${ev.peers === 1 ? '' : 's'}`
+      : '';
   const multiple =
     ev.peers > 0
-      ? `their median token trades at ${ev.medianMultiple.toFixed(2)}× TVL`
+      ? `their median token trades at ${ev.medianMultiple.toFixed(2)}× TVL${shrunk}`
       : `no tokenized peer prices the category, so its multiple borrows the snapshot-wide median of ${ev.medianMultiple.toFixed(2)}×`;
   return `${cat} holds ${ev.members} protocols; ${share}, ${multiple}, and ${p.name} is the ${ordinal(tvlRank)}-largest by TVL in the category.`;
 }

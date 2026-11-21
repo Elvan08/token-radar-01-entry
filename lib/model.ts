@@ -84,7 +84,7 @@ export const MODEL: ModelConstants = {
 };
 
 /** The model's version label: the dashboard names it. */
-export const MODEL_VERSION = 'launchscope-2';
+export const MODEL_VERSION = 'launchscope-3';
 
 /** How many live-token protocols the Live view carries, by market cap. */
 export const LIVE_ROWS = 24;
@@ -114,6 +114,8 @@ export interface BoardRow {
   };
   farm_steps: string[];
   farm_summary: string;
+  /** One or two sentences of peer context: category size, tokenized share, median multiple, TVL rank. */
+  peer_note: string;
 }
 
 /** The dashboard's view of one board row, with the model breakdown and the farm plan. */
@@ -135,6 +137,7 @@ export interface RadarRow {
   watchlist: boolean;
   farm_steps: string[];
   farm_summary: string;
+  peer_note: string;
 }
 
 /** A live-token protocol: it already trades, so the board shows the market's own value. */
@@ -221,6 +224,12 @@ export interface CategoryEvidence {
   peers: number;
   /** Laplace-smoothed share of the category that has ever issued a token. */
   issuancePrior: number;
+  /** Every protocol in the category, tokenized or not. */
+  members: number;
+  /** How many of the category's protocols already trade a token. */
+  tokenized: number;
+  /** Raw median mcap/TVL of the category's tokenized protocols (the global median when none did). */
+  medianMultiple: number;
 }
 
 /** Build the category evidence table from the snapshot alone. */
@@ -256,6 +265,9 @@ export function categoryEvidence(snapshot: Snapshot, model: ModelConstants): Map
       peerMultiple,
       peers: ratios.length,
       issuancePrior: (t.tokenized + 1) / (t.all + 2),
+      members: t.all,
+      tokenized: t.tokenized,
+      medianMultiple: catMedian,
     });
   }
   return out;
@@ -407,6 +419,31 @@ export function farmSummary(p: SnapshotProtocol): string {
   return `Plan at a glance: ${size}, ${gas}, ${hold}.`;
 }
 
+/** The ordinal of a rank: 1st, 2nd, 3rd, 4th, 11th, 21st. */
+function ordinal(n: number): string {
+  const mod100 = n % 100;
+  const mod10 = n % 10;
+  const suffix = mod100 >= 11 && mod100 <= 13 ? 'th' : mod10 === 1 ? 'st' : mod10 === 2 ? 'nd' : mod10 === 3 ? 'rd' : 'th';
+  return `${n}${suffix}`;
+}
+
+/**
+ * Peer context for one protocol, in a single sentence: how big its category is, how much of it
+ * has already issued a token, the median multiple its tokenized peers trade at, and where this
+ * protocol stands by TVL inside the category. Every number comes from the snapshot alone; when
+ * no tokenized peer prices the category, the sentence says the multiple is borrowed from the
+ * snapshot-wide median instead of pretending the category priced it.
+ */
+export function peerNote(p: SnapshotProtocol, ev: CategoryEvidence, tvlRank: number): string {
+  const cat = p.category ?? 'Uncategorised';
+  const share = `${ev.tokenized} of ${ev.members} already trade`;
+  const multiple =
+    ev.peers > 0
+      ? `their median token trades at ${ev.medianMultiple.toFixed(2)}× TVL`
+      : `no tokenized peer prices the category, so its multiple borrows the snapshot-wide median of ${ev.medianMultiple.toFixed(2)}×`;
+  return `${cat} holds ${ev.members} protocols; ${share}, ${multiple}, and ${p.name} is the ${ordinal(tvlRank)}-largest by TVL in the category.`;
+}
+
 /** Parse and validate the sealed snapshot text. */
 export function parseSnapshot(text: string): Snapshot {
   let raw: unknown;
@@ -444,6 +481,18 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
   for (let i = 1; i < scored.length; i += 1) {
     if (scored[i]!.v.implied >= scored[i - 1]!.v.implied) scored[i]!.v.implied = Math.max(1, scored[i - 1]!.v.implied - 1);
   }
+  // TVL rank inside each category, counted over every protocol in the category, tokenized or not.
+  const tvlRank = new Map<string, number>();
+  const byCategory = new Map<string, SnapshotProtocol[]>();
+  for (const p of snapshot.protocols) {
+    const cat = p.category ?? 'Uncategorised';
+    const list = byCategory.get(cat) ?? [];
+    list.push(p);
+    byCategory.set(cat, list);
+  }
+  for (const list of byCategory.values()) {
+    [...list].sort((a, b) => b.tvl_usd - a.tvl_usd).forEach((p, i) => tvlRank.set(p.slug, i + 1));
+  }
   const board: BoardRow[] = scored.map(({ p, v }, i) => ({
     rank: i + 1,
     slug: p.slug,
@@ -468,6 +517,7 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
     },
     farm_steps: farmPlan(p, snapshot.as_of),
     farm_summary: farmSummary(p),
+    peer_note: peerNote(p, evidence.get(p.category ?? 'Uncategorised')!, tvlRank.get(p.slug) ?? 1),
   }));
   const live: LiveRow[] = snapshot.protocols
     .filter((p) => !isPreToken(p) && p.mcap_usd !== null)
@@ -505,6 +555,7 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
       watchlist: watch.has(r.slug),
       farm_steps: r.farm_steps,
       farm_summary: r.farm_summary,
+      peer_note: r.peer_note,
     })),
     live,
   };
@@ -528,6 +579,7 @@ export function boardIssue(board: BoardRow[], snapshot: Snapshot): string | null
       const t = s.trim();
       if (t.length < 20 || t.length > 600) return `row ${r.slug} holds a farm step of ${t.length} characters`;
     }
+    if (!r.peer_note || r.peer_note.trim().length === 0 || r.peer_note.length > 400) return `row ${r.slug} holds a peer note of ${r.peer_note?.length ?? 0} characters`;
   }
   return null;
 }

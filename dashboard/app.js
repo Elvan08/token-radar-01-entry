@@ -73,7 +73,8 @@
       '<h1>Launch<span class="scope">Scope</span></h1>' +
       '<p class="lede">Every standalone protocol in the snapshot that still has <strong>no token</strong>, ranked by what its launch would be worth. ' +
       'Wrapped and staked products of assets that already trade are counted and set aside, never ranked &mdash; a wrapped bitcoin does not launch a second bitcoin. ' +
-      'The price of each future token is read off the protocols whose tokens already trade &mdash; no names are picked by hand, and every number on this page can be audited down to its four factors.</p>' +
+      'The price of each future token is read off the protocols whose tokens already trade &mdash; no names are picked by hand, and every number on this page can be audited down to its four factors. ' +
+      'Each protocol&rsquo;s drawer also spells out its peer context: how big its category is, how much of it already trades, and where it stands by TVL among its peers.</p>' +
       '<div class="stats">' +
       '<div class="stat"><span class="n">' + total + '</span><span class="l">protocols scanned</span></div>' +
       '<div class="stat"><span class="n">' + DATA.board_size + '</span><span class="l">pre-token, ranked</span></div>' +
@@ -190,6 +191,8 @@
       '<div class="why"><b>Why this rank:</b> ' + esc(r.name) + ' holds ' + fmtUsd(r.tvl_usd) + ' of TVL. Protocols like it that already trade are worth about ' +
       r.peer_multiple.toFixed(2) + '&times; their TVL; its ' + fmtPct(r.change_7d) + ' week and ' + fmtAge(r.age_days) + ' without a token move the estimate to ' + fmtUsd(r.implied_value_usd) +
       '. The number is the model&rsquo;s claim from the snapshot alone &mdash; it prices the launch, it does not promise one.</div>' +
+      '<h3 class="plan">Peer context</h3>' +
+      '<p class="why">' + esc(r.peer_note || 'Peer context was not computed for this row.') + '</p>' +
       '<h3 class="plan">Farm plan &mdash; before the launch</h3>' +
       '<p style="color:var(--muted);margin:0 0 10px;font-size:14px"><b style="color:var(--amber)">' + esc(r.farm_summary || '') + '</b></p><ol class="steps">' + steps + '</ol>' +
       '</aside>';

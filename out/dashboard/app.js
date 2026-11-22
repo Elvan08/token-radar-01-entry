@@ -184,12 +184,12 @@
       '<div class="row"><span>Peer multiple &mdash; category median mcap/TVL</span><span>&times; ' + r.peer_multiple.toFixed(3) + '</span></div>' +
       '<div class="row"><span>TVL at peer value</span><span>' + fmtUsd(Math.round(raw)) + '</span></div>' +
       '<div class="row"><span>Momentum &mdash; 7d TVL change ' + fmtPct(r.change_7d) + '</span><span>&times; ' + r.momentum_multiplier.toFixed(3) + '</span></div>' +
-      '<div class="row"><span>Maturity &mdash; ' + fmtAge(r.age_days) + ' with no token</span><span>&times; ' + r.maturity_multiplier.toFixed(3) + '</span></div>' +
+      '<div class="row"><span>Maturity &mdash; ' + (r.age_days === null ? 'no listing date published, no tenure credit' : fmtAge(r.age_days) + ' with no token') + '</span><span>&times; ' + r.maturity_multiplier.toFixed(3) + '</span></div>' +
       '<div class="row"><span>Issuance factor &mdash; category launch history</span><span>&times; ' + r.issuance_factor.toFixed(3) + '</span></div>' +
       '<div class="row"><span>Implied value</span><span>' + fmtUsd(r.implied_value_usd) + '</span></div>' +
       '</div>' +
       '<div class="why"><b>Why this rank:</b> ' + esc(r.name) + ' holds ' + fmtUsd(r.tvl_usd) + ' of TVL. Protocols like it that already trade are worth about ' +
-      r.peer_multiple.toFixed(2) + '&times; their TVL; its ' + fmtPct(r.change_7d) + ' week and ' + fmtAge(r.age_days) + ' without a token move the estimate to ' + fmtUsd(r.implied_value_usd) +
+      r.peer_multiple.toFixed(2) + '&times; their TVL; its ' + fmtPct(r.change_7d) + ' week and ' + (r.age_days === null ? 'no listing date published, so no tenure credit' : fmtAge(r.age_days) + ' without a token') + ' move the estimate to ' + fmtUsd(r.implied_value_usd) +
       '. The number is the model&rsquo;s claim from the snapshot alone &mdash; it prices the launch, it does not promise one.</div>' +
       '<h3 class="plan">Peer context</h3>' +
       '<p class="why">' + esc(r.peer_note || 'Peer context was not computed for this row.') + '</p>' +

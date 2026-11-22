@@ -24,7 +24,10 @@
 //      than a shrinking one with the same stock of TVL, and one bad week cannot zero it.
 //   3. Maturity. A protocol tracked for years with no token has a proven product and a proven
 //      habit of not issuing; the curve 0.85 + 0.3 x (1 - exp(-age_years / 2.5)) pays up to +15%
-//      for that track record and starts a newborn at 0.85.
+//      for that track record and starts a newborn at 0.85. A protocol with no listing date
+//      published gets no tenure credit at all — maturity stays at the 0.85 base — because the
+//      model cannot verify how long it has run with no token, and an unverified year is not
+//      worth the same as a proven one.
 //   4. Issuance prior. The share of a category's protocols that ever issued a token, counted
 //      from this snapshot with Laplace smoothing, softened to a factor of 0.35 + 0.65 x prior:
 //      a lending market prices like its tokenized peers, while a centralised exchange that has
@@ -84,7 +87,7 @@ export const MODEL: ModelConstants = {
 };
 
 /** The model's version label: the dashboard names it. */
-export const MODEL_VERSION = 'launchscope-4';
+export const MODEL_VERSION = 'launchscope-5';
 
 /** How many live-token protocols the Live view carries, by market cap. */
 export const LIVE_ROWS = 24;
@@ -283,8 +286,9 @@ export function impliedValue(
   const age = ageDays(asOf, protocol.listed_at);
   const growthPct = protocol.change_7d === null ? 0 : clamp(protocol.change_7d, model.momentum_floor_pct, model.momentum_cap_pct);
   const momentum = Math.exp((growthPct / 100) * model.momentum_weight);
-  const years = age === null ? 1 : age / 365;
-  const maturity = model.maturity_base + model.maturity_range * (1 - Math.exp(-years / model.maturity_tau_years));
+  // No listing date, no tenure credit: an unknown age is scored at the maturity base, never
+  // at the one-year credit the old code gave it by default.
+  const maturity = age === null ? model.maturity_base : model.maturity_base + model.maturity_range * (1 - Math.exp(-(age / 365) / model.maturity_tau_years));
   const issuance = model.issuance_base + model.issuance_range * evidence.issuancePrior;
   const implied = Math.max(1, Math.round(protocol.tvl_usd * evidence.peerMultiple * momentum * maturity * issuance));
   return { implied, peerMultiple: evidence.peerMultiple, momentum, maturity, issuance, age };

@@ -95,7 +95,7 @@ export const MODEL: ModelConstants = {
 };
 
 /** The model's version label: the dashboard names it. */
-export const MODEL_VERSION = 'launchscope-6';
+export const MODEL_VERSION = 'launchscope-7';
 
 /** How many live-token protocols the Live view carries, by market cap. */
 export const LIVE_ROWS = 24;
@@ -484,7 +484,7 @@ export function peerNote(p: SnapshotProtocol, ev: CategoryEvidence, tvlRank: num
       : '';
   const multiple =
     ev.peers > 0
-      ? `their median token trades at ${ev.medianMultiple.toFixed(2)}× TVL${shrunk}`
+      ? `their median token trades at ${ev.medianMultiple.toFixed(2)}× TVL${shrunk}, and the middle half of them trade between ${ev.multipleP25.toFixed(2)}× and ${ev.multipleP75.toFixed(2)}×`
       : `no tokenized peer prices the category, so its multiple borrows the snapshot-wide median of ${ev.medianMultiple.toFixed(2)}×`;
   return `${cat} holds ${ev.members} protocols; ${share}, ${multiple}, and ${p.name} is the ${ordinal(tvlRank)}-largest by TVL in the category.`;
 }

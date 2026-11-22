@@ -49,7 +49,7 @@ a { color: var(--amber); }
 
 /* Model strip */
 .model {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0 4px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 12px 0 4px;
 }
 .factor {
   background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--amber-dim);
@@ -175,11 +175,26 @@ ol.steps li::marker { color: var(--amber); font-family: var(--mono); font-weight
 .chip:hover b { color: #161006; }
 .chip b { font-family: var(--mono); }
 
+.leaders { margin: 14px 0 4px; }
+.leaders .movers-label { display: block; margin-bottom: 8px; }
+.leader-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.chip.leader {
+  border-radius: 10px; border-color: var(--line); text-align: left;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;
+}
+.chip.leader:hover { background: var(--panel-2); color: var(--ink); border-color: var(--amber); }
+.leader .lrank { color: var(--amber); font-family: var(--mono); font-weight: 700; font-size: 12px; }
+.leader .lname { font-weight: 700; font-size: 14px; }
+.leader .lval { font-family: var(--mono); font-size: 17px; font-weight: 700; }
+.leader .lband { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.leader .lmeta { color: var(--faint); font-size: 11px; }
+
 footer { margin-top: 30px; color: var(--faint); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
 footer b { color: var(--muted); }
 
 @media (max-width: 900px) {
   .model { grid-template-columns: repeat(2, 1fr); }
+  .leader-grid { grid-template-columns: repeat(2, 1fr); }
   .masthead h1 { font-size: 31px; }
   .hide-m { display: none; }
 }

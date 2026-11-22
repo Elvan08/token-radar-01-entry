@@ -88,8 +88,9 @@
       '<div class="factor"><h3>2 &middot; Momentum</h3><p>Seven-day TVL growth on an exponential curve, <b>exp(change &times; 0.9)</b>: growth compounds, one bad week cannot zero a protocol.</p></div>' +
       '<div class="factor"><h3>3 &middot; Maturity</h3><p>Years tracked with no token, on a saturating curve up to <b>+15%</b>: a proven product is worth more than a newborn.</p></div>' +
       '<div class="factor"><h3>4 &middot; Issuance prior</h3><p>The share of the category that ever issued a token, counted from this snapshot: some categories launch, some never do.</p></div>' +
+      '<div class="factor"><h3>5 &middot; Value band</h3><p>Every estimate also runs at the peer set&rsquo;s <b>p25 and p75</b> multiples, shrunk and capped the same way: the band is the spread the category&rsquo;s own tokens support, not a confidence trick.</p></div>' +
       '</section>' +
-      '<p class="formula"><b>implied value</b> = TVL &times; peer multiple &times; momentum &times; maturity &times; issuance factor</p>';
+      '<p class="formula"><b>implied value</b> = TVL &times; peer multiple &times; momentum &times; maturity &times; issuance factor &middot; <b>band</b> = the same factors at the p25 / p75 peer multiples</p>';
   }
 
   function controlsHtml() {
@@ -128,6 +129,21 @@
       return '<button class="chip" data-slug="' + esc(r.slug) + '">' + esc(r.name) + ' <b class="' + (r.change_7d >= 0 ? 'pos' : 'neg') + '">' + fmtPct(r.change_7d) + '</b></button>';
     }).join('');
     return '<section class="movers"><span class="movers-label">Watchlist movers &mdash; fastest 7d TVL growth</span><span class="chips">' + chips + '</span></section>';
+  }
+
+  function leadersHtml() {
+    var top = DATA.rows.filter(function (r) { return r.rank <= 5; }).sort(function (a, b) { return a.rank - b.rank; });
+    if (!top.length) return '';
+    var cards = top.map(function (r) {
+      return '<button class="chip leader" data-slug="' + esc(r.slug) + '">' +
+        '<span class="lrank">#' + r.rank + '</span>' +
+        '<span class="lname">' + esc(r.name) + (r.watchlist ? ' <span class="badge">Watchlist</span>' : '') + '</span>' +
+        '<span class="lval">' + fmtUsd(r.implied_value_usd) + '</span>' +
+        '<span class="lband">' + fmtUsd(r.implied_low_usd) + ' &ndash; ' + fmtUsd(r.implied_high_usd) + '</span>' +
+        '<span class="lmeta">' + esc(r.category || 'Uncategorised') + ' &middot; TVL ' + fmtUsd(r.tvl_usd) + ' &middot; peer ' + r.peer_multiple.toFixed(2) + '&times;</span>' +
+        '</button>';
+    }).join('');
+    return '<section class="leaders"><span class="movers-label">Leaders &mdash; the five largest implied launches</span><div class="leader-grid">' + cards + '</div></section>';
   }
 
   function boardHtml(rows) {
@@ -202,7 +218,7 @@
   function render() {
     var rows = state.tab === 'board' ? filtered() : [];
     app.innerHTML = headerHtml() + controlsHtml() +
-      (state.tab === 'board' ? moversHtml() + boardHtml(rows) : liveHtml()) +
+      (state.tab === 'board' ? leadersHtml() + moversHtml() + boardHtml(rows) : liveHtml()) +
       '<footer>Source: <b>' + esc(DATA.source) + '</b> &middot; sealed snapshot as of <b>' + esc(DATA.as_of) + '</b>. ' +
       'Implied values are this entry&rsquo;s model (' + esc(DATA.model_version) + '), computed only from the snapshot&rsquo;s figures; they are claims to argue with, not prices. ' +
       'Farm plans are starting points &mdash; check a protocol&rsquo;s own docs before moving money.</footer>' +
@@ -224,7 +240,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
       b.addEventListener('click', function () { state.tab = b.getAttribute('data-tab'); render(); });
     });
-    Array.prototype.forEach.call(document.querySelectorAll('.movers .chip'), function (chip) {
+    Array.prototype.forEach.call(document.querySelectorAll('.chip[data-slug]'), function (chip) {
       chip.addEventListener('click', function () { openDrawer(chip.getAttribute('data-slug')); });
     });
     Array.prototype.forEach.call(document.querySelectorAll('thead th[data-k]'), function (th) {

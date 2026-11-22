@@ -26,8 +26,16 @@ special-cased:
 4. **Issuance factor** — `0.35 + 0.65 x prior`, where the prior is the Laplace-smoothed share of the
    category's protocols that ever issued a token, counted from this snapshot.
 
+5. **Value band** — every row also carries the interquartile band of the same evidence: the
+   category's 25th and 75th percentile peer multiples, shrunk and capped the same way, run through
+   the same momentum, maturity and issuance factors. The band is the spread of values the row's own
+   peer set supports, shown in the board, the leaders strip and each protocol's drawer.
+
 Protocols whose token already trades are never ranked; the dashboard shows the largest of them in a
-reference tab at the market's own values — they are the evidence the board is priced from.
+reference tab at the market's own values — they are the evidence the board is priced from. That tab
+also runs each live protocol back through the same four factors and publishes the gap between the
+model's figure and its actual market cap: an in-sample consistency check, labelled as such, not a
+forecast score.
 
 ## Run it
 

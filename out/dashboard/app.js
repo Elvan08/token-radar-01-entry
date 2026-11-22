@@ -172,17 +172,21 @@
 
   function liveHtml() {
     var head = '<table><thead><tr><th>Protocol</th><th class="hide-m">Category</th>' +
-      '<th class="num">Market cap (actual)</th><th class="num">TVL</th><th class="num hide-m">mcap / TVL</th><th class="num hide-m">7d</th></tr></thead><tbody>';
+      '<th class="num">Market cap (actual)</th><th class="num hide-m">Model would say</th><th class="num hide-m">Market vs model</th><th class="num">TVL</th><th class="num hide-m">mcap / TVL</th><th class="num hide-m">7d</th></tr></thead><tbody>';
     var body = DATA.live.map(function (r) {
       var ratio = r.mcap_usd && r.tvl_usd ? (r.mcap_usd / r.tvl_usd).toFixed(2) + '&times;' : 'n/a';
+      var gap = '&times;' + (r.model_gap_pct / 100 + 1).toFixed(1);
       return '<tr><td class="name"><span class="pname">' + esc(r.name) + '</span><span class="badge live">Trading</span>' +
         '<span class="chains">' + esc(r.chains.slice(0, 3).join(' · ')) + '</span></td>' +
         '<td class="cat hide-m">' + esc(r.category || 'Uncategorised') + '</td>' +
-        '<td class="num"><b>' + fmtUsd(r.mcap_usd) + '</b></td><td class="num">' + fmtUsd(r.tvl_usd) + '</td>' +
+        '<td class="num"><b>' + fmtUsd(r.mcap_usd) + '</b></td>' +
+        '<td class="num hide-m">' + fmtUsd(r.model_implied_usd) + '</td>' +
+        '<td class="num hide-m ' + (r.model_gap_pct >= 0 ? 'pos' : 'neg') + '">' + gap + '</td>' +
+        '<td class="num">' + fmtUsd(r.tvl_usd) + '</td>' +
         '<td class="num hide-m">' + ratio + '</td>' +
         '<td class="num hide-m ' + (r.change_7d === null ? '' : r.change_7d >= 0 ? 'pos' : 'neg') + '">' + fmtPct(r.change_7d) + '</td></tr>';
     }).join('');
-    return '<p class="lede" style="color:var(--muted);margin:0 0 10px">These protocols already issued their token, so the market &mdash; not the model &mdash; sets their value. Their category medians are the evidence the pre-token board is priced from.</p>' + head + body + '</tbody></table>';
+    return '<p class="lede" style="color:var(--muted);margin:0 0 10px">These protocols already issued their token, so the market &mdash; not the model &mdash; sets their value. Their category medians are the evidence the pre-token board is priced from. The two model columns run each of them back through the same four factors as a consistency check &mdash; in-sample, since their own trades sit inside their categories&rsquo; evidence &mdash; so the gap shows where the model&rsquo;s logic and the market part ways, not a forecast score. Two effects push it up by construction: this set is the snapshot&rsquo;s largest tokens, the winners, which trade at a premium to their category medians; and several of them price a whole brand or ecosystem &mdash; one token across many deployments, or a chain&rsquo;s own token &mdash; while the snapshot&rsquo;s TVL counts a single deployment.</p>' + head + body + '</tbody></table>';
   }
 
   function drawerHtml(r) {

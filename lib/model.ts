@@ -95,7 +95,7 @@ export const MODEL: ModelConstants = {
 };
 
 /** The model's version label: the dashboard names it. */
-export const MODEL_VERSION = 'launchscope-7';
+export const MODEL_VERSION = 'launchscope-8';
 
 /** How many live-token protocols the Live view carries, by market cap. */
 export const LIVE_ROWS = 24;
@@ -166,6 +166,10 @@ export interface LiveRow {
   tvl_usd: number;
   mcap_usd: number | null;
   change_7d: number | null;
+  /** What the model would imply for this protocol if it had no token: the same four factors. */
+  model_implied_usd: number;
+  /** Market cap over the model value, minus one, in percent: how far reality sits from the model. */
+  model_gap_pct: number;
 }
 
 /** Everything the dashboard needs: the board, the live set, and the model it runs. */
@@ -566,11 +570,26 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
     farm_summary: farmSummary(p),
     peer_note: peerNote(p, evidence.get(p.category ?? 'Uncategorised')!, tvlRank.get(p.slug) ?? 1),
   }));
+  // The reference set is also the model's reality check: every live protocol is run back
+  // through the same four factors as if it had no token, and the gap between that figure and
+  // its actual market cap is published with it. The check is in-sample — a live protocol's own
+  // trade is part of its category's evidence — so the gap reads as a consistency measure, not
+  // an out-of-sample forecast score, and the dashboard labels it that way. It also reads high
+  // by construction: the live set is the snapshot's largest tokens, which trade at a premium
+  // to their category medians, and several price a whole brand or ecosystem against the TVL
+  // of a single deployment.
   const live: LiveRow[] = snapshot.protocols
     .filter((p) => !isPreToken(p) && p.mcap_usd !== null)
     .sort((a, b) => b.mcap_usd! - a.mcap_usd!)
     .slice(0, LIVE_ROWS)
-    .map((p) => ({ slug: p.slug, name: p.name, category: p.category, chains: p.chains, tvl_usd: p.tvl_usd, mcap_usd: p.mcap_usd, change_7d: p.change_7d }));
+    .map((p) => {
+      const v = impliedValue(p, snapshot.as_of, evidence.get(p.category ?? 'Uncategorised')!, MODEL);
+      return {
+        slug: p.slug, name: p.name, category: p.category, chains: p.chains, tvl_usd: p.tvl_usd, mcap_usd: p.mcap_usd, change_7d: p.change_7d,
+        model_implied_usd: v.implied,
+        model_gap_pct: Number((((p.mcap_usd! / v.implied) - 1) * 100).toFixed(1)),
+      };
+    });
   const radar: RadarData = {
     as_of: snapshot.as_of,
     source: snapshot.source,

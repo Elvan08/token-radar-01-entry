@@ -118,6 +118,7 @@ td .sub { display: block; color: var(--faint); font-size: 11px; }
 .pos { color: var(--green); } .neg { color: var(--red); }
 .bar { height: 5px; background: #1c2836; border-radius: 3px; margin-top: 5px; min-width: 90px; }
 .bar i { display: block; height: 100%; background: var(--amber); border-radius: 3px; }
+.range { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
 .cat { color: var(--muted); font-size: 13px; white-space: nowrap; }
 .empty { padding: 34px; text-align: center; color: var(--muted); }
 

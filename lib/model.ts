@@ -35,6 +35,14 @@
 //
 //   implied = round(tvl x peer_multiple x momentum x maturity x issuance_factor)
 //
+//   5. Range. A point estimate pretends the market prices a whole category at exactly one
+//      multiple; it does not. Every row also carries the interquartile band of the same
+//      evidence — the category's 25th and 75th percentile peer multiples, shrunk toward the
+//      snapshot-wide quartiles and capped at the same 90th percentile — run through the same
+//      momentum, maturity and issuance factors. The band is the spread of values the row's own
+//      peer set actually supports: a narrow band means the category's tokens trade alike, a
+//      wide one means the middle estimate is a coin toss between very different outcomes.
+//
 // No protocol name is ever special-cased: one function scores every row from its figures alone,
 // and the dashboard shows each row's four factors so a reader can audit the number end to end.
 
@@ -87,7 +95,7 @@ export const MODEL: ModelConstants = {
 };
 
 /** The model's version label: the dashboard names it. */
-export const MODEL_VERSION = 'launchscope-5';
+export const MODEL_VERSION = 'launchscope-6';
 
 /** How many live-token protocols the Live view carries, by market cap. */
 export const LIVE_ROWS = 24;
@@ -108,6 +116,10 @@ export interface BoardRow {
   token_status: 'pre-token';
   age_days: number | null;
   implied_value_usd: number;
+  /** The interquartile band of the implied value: the same factors at the peer set's p25 multiple. */
+  implied_low_usd: number;
+  /** The same band's top edge, at the peer set's p75 multiple. */
+  implied_high_usd: number;
   model: {
     peer_multiple: number;
     momentum_multiplier: number;
@@ -133,6 +145,8 @@ export interface RadarRow {
   listed_at: string | null;
   age_days: number | null;
   implied_value_usd: number;
+  implied_low_usd: number;
+  implied_high_usd: number;
   peer_multiple: number;
   momentum_multiplier: number;
   maturity_multiplier: number;
@@ -233,6 +247,10 @@ export interface CategoryEvidence {
   tokenized: number;
   /** Raw median mcap/TVL of the category's tokenized protocols (the global median when none did). */
   medianMultiple: number;
+  /** 25th percentile peer multiple, shrunk toward the snapshot-wide quartile (the global quartile when no peer priced the category). */
+  multipleP25: number;
+  /** 75th percentile peer multiple, shrunk the same way and winsorised at the same cap as the median. */
+  multipleP75: number;
 }
 
 /** Build the category evidence table from the snapshot alone. */
@@ -258,12 +276,21 @@ export function categoryEvidence(snapshot: Snapshot, model: ModelConstants): Map
   }
   const globalMedian = allRatios.length > 0 ? median(allRatios) : 0.2;
   const multipleCap = allRatios.length > 0 ? quantile(allRatios, 0.9) : 3;
+  const globalP25 = allRatios.length > 0 ? quantile(allRatios, 0.25) : globalMedian;
+  const globalP75 = allRatios.length > 0 ? quantile(allRatios, 0.75) : globalMedian;
   const out = new Map<string, CategoryEvidence>();
   for (const [cat, t] of totals) {
     const ratios = ratiosByCat.get(cat) ?? [];
     const catMedian = ratios.length > 0 ? median(ratios) : globalMedian;
     const shrunk = (ratios.length * catMedian + model.shrink_peers * globalMedian) / (ratios.length + model.shrink_peers);
     const peerMultiple = Math.min(shrunk, multipleCap);
+    // The band's edges get the same treatment as the middle: shrunk toward the snapshot-wide
+    // quartiles by the same sample-size weight, the top edge winsorised at the same cap, so a
+    // thin category cannot widen its own band past what the whole market supports either.
+    const catP25 = ratios.length > 0 ? quantile(ratios, 0.25) : globalP25;
+    const catP75 = ratios.length > 0 ? quantile(ratios, 0.75) : globalP75;
+    const multipleP25 = (ratios.length * catP25 + model.shrink_peers * globalP25) / (ratios.length + model.shrink_peers);
+    const multipleP75 = Math.min((ratios.length * catP75 + model.shrink_peers * globalP75) / (ratios.length + model.shrink_peers), multipleCap);
     out.set(cat, {
       peerMultiple,
       peers: ratios.length,
@@ -271,6 +298,8 @@ export function categoryEvidence(snapshot: Snapshot, model: ModelConstants): Map
       members: t.all,
       tokenized: t.tokenized,
       medianMultiple: catMedian,
+      multipleP25,
+      multipleP75,
     });
   }
   return out;
@@ -282,7 +311,7 @@ export function impliedValue(
   asOf: string,
   evidence: CategoryEvidence,
   model: ModelConstants,
-): { implied: number; peerMultiple: number; momentum: number; maturity: number; issuance: number; age: number | null } {
+): { implied: number; impliedLow: number; impliedHigh: number; peerMultiple: number; momentum: number; maturity: number; issuance: number; age: number | null } {
   const age = ageDays(asOf, protocol.listed_at);
   const growthPct = protocol.change_7d === null ? 0 : clamp(protocol.change_7d, model.momentum_floor_pct, model.momentum_cap_pct);
   const momentum = Math.exp((growthPct / 100) * model.momentum_weight);
@@ -291,7 +320,11 @@ export function impliedValue(
   const maturity = age === null ? model.maturity_base : model.maturity_base + model.maturity_range * (1 - Math.exp(-(age / 365) / model.maturity_tau_years));
   const issuance = model.issuance_base + model.issuance_range * evidence.issuancePrior;
   const implied = Math.max(1, Math.round(protocol.tvl_usd * evidence.peerMultiple * momentum * maturity * issuance));
-  return { implied, peerMultiple: evidence.peerMultiple, momentum, maturity, issuance, age };
+  // The band runs the quartile multiples through the same three factors; the clamps keep the
+  // band honest even where shrinkage or the cap would cross an edge over the middle.
+  const impliedLow = Math.min(implied, Math.max(1, Math.round(protocol.tvl_usd * evidence.multipleP25 * momentum * maturity * issuance)));
+  const impliedHigh = Math.max(implied, Math.max(1, Math.round(protocol.tvl_usd * evidence.multipleP75 * momentum * maturity * issuance)));
+  return { implied, impliedLow, impliedHigh, peerMultiple: evidence.peerMultiple, momentum, maturity, issuance, age };
 }
 
 function money(usd: number): string {
@@ -520,6 +553,8 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
     token_status: 'pre-token',
     age_days: v.age,
     implied_value_usd: v.implied,
+    implied_low_usd: Math.min(v.impliedLow, v.implied),
+    implied_high_usd: Math.max(v.impliedHigh, v.implied),
     model: {
       peer_multiple: Number(v.peerMultiple.toFixed(4)),
       momentum_multiplier: Number(v.momentum.toFixed(4)),
@@ -560,6 +595,8 @@ export function buildRadar(snapshot: Snapshot): { board: BoardRow[]; radar: Rada
       listed_at: r.listed_at,
       age_days: r.age_days,
       implied_value_usd: r.implied_value_usd,
+      implied_low_usd: r.implied_low_usd,
+      implied_high_usd: r.implied_high_usd,
       peer_multiple: r.model.peer_multiple,
       momentum_multiplier: r.model.momentum_multiplier,
       maturity_multiplier: r.model.maturity_multiplier,
@@ -586,6 +623,7 @@ export function boardIssue(board: BoardRow[], snapshot: Snapshot): string | null
     const r = board[i]!;
     if (r.rank !== i + 1) return `row ${r.slug} holds rank ${r.rank}, expected ${i + 1}`;
     if (i > 0 && r.implied_value_usd > board[i - 1]!.implied_value_usd) return `implied value rises at rank ${r.rank}`;
+    if (!(r.implied_low_usd >= 1 && r.implied_low_usd <= r.implied_value_usd && r.implied_high_usd >= r.implied_value_usd)) return `row ${r.slug} holds a broken value band`;
     if (r.farm_steps.length < 3 || r.farm_steps.length > 12) return `row ${r.slug} holds ${r.farm_steps.length} farm steps`;
     for (const s of r.farm_steps) {
       const t = s.trim();

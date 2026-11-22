@@ -149,7 +149,7 @@
         '<td class="num hide-m ' + (r.change_7d === null ? '' : r.change_7d >= 0 ? 'pos' : 'neg') + '">' + fmtPct(r.change_7d) + '</td>' +
         '<td class="num hide-m">' + fmtAge(r.age_days) + '</td>' +
         '<td class="num hide-m">' + r.peer_multiple.toFixed(2) + '&times;</td>' +
-        '<td class="num"><b>' + fmtUsd(r.implied_value_usd) + '</b><span class="bar"><i style="width:' + pct + '%"></i></span></td></tr>';
+        '<td class="num"><b>' + fmtUsd(r.implied_value_usd) + '</b><span class="range">' + fmtUsd(r.implied_low_usd) + ' &ndash; ' + fmtUsd(r.implied_high_usd) + '</span><span class="bar"><i style="width:' + pct + '%"></i></span></td></tr>';
     }).join('');
     return head + body + '</tbody></table>';
   }
@@ -187,10 +187,11 @@
       '<div class="row"><span>Maturity &mdash; ' + (r.age_days === null ? 'no listing date published, no tenure credit' : fmtAge(r.age_days) + ' with no token') + '</span><span>&times; ' + r.maturity_multiplier.toFixed(3) + '</span></div>' +
       '<div class="row"><span>Issuance factor &mdash; category launch history</span><span>&times; ' + r.issuance_factor.toFixed(3) + '</span></div>' +
       '<div class="row"><span>Implied value</span><span>' + fmtUsd(r.implied_value_usd) + '</span></div>' +
+      '<div class="row"><span>Value band &mdash; peer multiples p25 to p75, same factors</span><span>' + fmtUsd(r.implied_low_usd) + ' &ndash; ' + fmtUsd(r.implied_high_usd) + '</span></div>' +
       '</div>' +
       '<div class="why"><b>Why this rank:</b> ' + esc(r.name) + ' holds ' + fmtUsd(r.tvl_usd) + ' of TVL. Protocols like it that already trade are worth about ' +
       r.peer_multiple.toFixed(2) + '&times; their TVL; its ' + fmtPct(r.change_7d) + ' week and ' + (r.age_days === null ? 'no listing date published, so no tenure credit' : fmtAge(r.age_days) + ' without a token') + ' move the estimate to ' + fmtUsd(r.implied_value_usd) +
-      '. The number is the model&rsquo;s claim from the snapshot alone &mdash; it prices the launch, it does not promise one.</div>' +
+      '. The middle half of its trading peers support a band of ' + fmtUsd(r.implied_low_usd) + ' to ' + fmtUsd(r.implied_high_usd) + ' on the same factors &mdash; the wider the band, the less its category agrees on one price. The number is the model&rsquo;s claim from the snapshot alone &mdash; it prices the launch, it does not promise one.</div>' +
       '<h3 class="plan">Peer context</h3>' +
       '<p class="why">' + esc(r.peer_note || 'Peer context was not computed for this row.') + '</p>' +
       '<h3 class="plan">Farm plan &mdash; before the launch</h3>' +
